@@ -1,0 +1,310 @@
+<!--
+Simple Snake Game - Single HTML file
+Author: ChatGPT for Viraj
+How to use:
+1. Save this file as `snake_game.html` and open in any modern browser.
+2. Controls: Arrow keys or WASD to move. Space to Pause/Resume.
+3. Mobile: Swipe to change direction.
+4. Click "Copy Link" to copy the page URL (useful after hosting). Click "Share on LinkedIn" to open LinkedIn share dialog with the page URL.
+5. To host: push to GitHub repo and enable GitHub Pages or deploy on Netlify/Vercel.
+-->
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Snake — Viraj's Web Game</title>
+  <style>
+    :root{
+      --bg:#0b1020;
+      --grid:#0f1724;
+      --snake:#00ff99;
+      --food:#ff4d6d;
+      --muted:#9aa5bf;
+      --glass: rgba(255,255,255,0.05);
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:Inter,ui-sans-serif,system-ui,Segoe UI,Roboto,'Helvetica Neue',Arial;background:linear-gradient(180deg,#071025 0%,var(--bg) 100%);color:var(--muted);display:flex;align-items:center;justify-content:center;height:100vh}
+    .wrap{width:min(920px,95vw);display:grid;grid-template-columns:1fr 320px;gap:18px}
+    @media (max-width:880px){.wrap{grid-template-columns:1fr;align-items:start;padding:24px 0}}
+
+    /* Game area */
+    .board-card{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));border-radius:14px;padding:18px;box-shadow:0 6px 30px rgba(2,6,23,0.6);display:flex;flex-direction:column;align-items:center}
+    canvas{background:linear-gradient(45deg,var(--grid), rgba(12,16,30,0.6));border-radius:10px;display:block;width:100%;height:auto;max-width:100%;}
+    .hud{display:flex;gap:12px;margin:12px 0;align-items:center}
+    .stat{background:var(--glass);padding:8px 12px;border-radius:10px;color:#e6eef8;min-width:84px;text-align:center;font-weight:600}
+
+    /* Controls panel */
+    .panel{background:rgba(255,255,255,0.02);padding:16px;border-radius:14px;display:flex;flex-direction:column;gap:12px;min-height:220px}
+    h1{margin:0;font-size:20px;color:#e8f1ff}
+    p.lead{margin:0;color:var(--muted);font-size:13px}
+
+    .controls{display:flex;gap:8px;flex-wrap:wrap}
+    button{background:linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.01));border:1px solid rgba(255,255,255,0.04);color:#eaf6ff;padding:8px 12px;border-radius:10px;cursor:pointer;font-weight:600}
+    button.secondary{background:transparent;border:1px dashed rgba(255,255,255,0.04)}
+    .range{display:flex;align-items:center;gap:8px}
+    input[type=range]{width:140px}
+
+    .footer{font-size:12px;color:var(--muted);display:flex;justify-content:space-between;align-items:center}
+    a.brand{color:#bfefff;text-decoration:none;font-weight:700}
+
+    .big-center{display:flex;align-items:center;justify-content:center;height:140px;flex-direction:column}
+    .hint{color:var(--muted);font-size:13px}
+
+    /* little neon */
+    .title-row{display:flex;justify-content:space-between;align-items:center;width:100%}
+    .title{display:flex;flex-direction:column}
+    .logo{font-weight:800;color:var(--snake);letter-spacing:0.6px}
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="board-card">
+      <div class="title-row" style="width:100%">
+        <div class="title">
+          <div class="logo">S N A K E</div>
+          <div style="font-size:12px;color:var(--muted)">Use arrows or swipe — enjoy!</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:12px;color:var(--muted)">High Score</div>
+          <div id="highscore" style="font-weight:800;color:var(--snake);font-size:18px">0</div>
+        </div>
+      </div>
+
+      <canvas id="game" width="600" height="600"></canvas>
+
+      <div class="hud">
+        <div class="stat">Score: <span id="score">0</span></div>
+        <div class="stat">Level: <span id="level">1</span></div>
+        <div class="stat">Speed: <span id="speedLabel">6</span></div>
+      </div>
+
+      <div class="big-center" id="messageBox">
+        <div class="hint">Press <strong>Space</strong> to Pause / Resume — press <strong>R</strong> to Restart</div>
+      </div>
+
+    </div>
+
+    <div class="panel">
+      <h1>Controls & Settings</h1>
+      <p class="lead">Easy to host — copy link and share on LinkedIn when hosted.</p>
+
+      <div class="controls">
+        <button id="startBtn">Start Game</button>
+        <button id="pauseBtn" class="secondary">Pause</button>
+        <button id="restartBtn" class="secondary">Restart</button>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center">
+        <div class="range">Speed <input id="speed" type="range" min="3" max="15" value="6"> <span id="speedOut">6</span></div>
+        <div style="font-size:12px;color:var(--muted)">Use arrow keys or WASD</div>
+      </div>
+
+      <div style="display:flex;gap:8px">
+        <button id="copyLink">Copy Link</button>
+        <button id="shareLinkedIn" class="secondary">Share on LinkedIn</button>
+      </div>
+
+      <div style="margin-top:6px;font-size:13px;color:var(--muted)">Tip: Host on GitHub Pages — then share the URL on LinkedIn.</div>
+
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center">
+        <div style="width:14px;height:14px;border-radius:4px;background:var(--snake)"></div>
+        <div style="font-size:13px;color:var(--muted)">Snake</div>
+        <div style="width:14px;height:14px;border-radius:4px;background:var(--food)"></div>
+        <div style="font-size:13px;color:var(--muted)">Food</div>
+      </div>
+
+      <div class="footer">
+        <div>Made for LinkedIn demo — @Viraj</div>
+        <div style="font-size:12px;color:var(--muted)">Controls: ← ↑ → ↓</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+// Game logic
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const gridSize = 20; // number of cells per row/col
+const tile = canvas.width / gridSize; // size of each cell in px
+
+let snake = [{x:10,y:10}];
+let dir = {x:0,y:0};
+let food = null;
+let score = 0;
+let level = 1;
+let speed = 6; // frames per second-ish
+let running = false;
+let lastPaint = 0;
+let highscore = Number(localStorage.getItem('snake_high')||0);
+const scoreEl = document.getElementById('score');
+const levelEl = document.getElementById('level');
+const speedLabel = document.getElementById('speedLabel');
+const highEl = document.getElementById('highscore');
+const messageBox = document.getElementById('messageBox');
+
+highEl.textContent = highscore;
+
+function placeFood(){
+  while(true){
+    const x = Math.floor(Math.random()*gridSize);
+    const y = Math.floor(Math.random()*gridSize);
+    if(!snake.some(s=>s.x===x && s.y===y)){ food = {x,y}; break }
+  }
+}
+
+function resetGame(){
+  snake = [{x:10,y:10}];
+  dir = {x:0,y:0};
+  score=0; level=1; speed = Number(document.getElementById('speed').value);
+  scoreEl.textContent = score; levelEl.textContent = level; speedLabel.textContent = speed;
+  placeFood();
+  running = false;
+}
+
+function gameOver(){
+  running = false;
+  messageBox.innerHTML = `<div style="color:#ffdfe6;font-weight:700">Game Over — Score ${score}</div><div style="margin-top:6px;color:var(--muted)">Press Start to play again</div>`;
+  if(score>highscore){ highscore = score; localStorage.setItem('snake_high', highscore); highEl.textContent = highscore }
+}
+
+function update(){
+  // move snake
+  if(dir.x===0 && dir.y===0) return; // not started moving
+  const head = {x: snake[0].x + dir.x, y: snake[0].y + dir.y};
+  // wrap-around behaviour
+  if(head.x<0) head.x = gridSize-1;
+  if(head.x>=gridSize) head.x = 0;
+  if(head.y<0) head.y = gridSize-1;
+  if(head.y>=gridSize) head.y = 0;
+
+  // hit self?
+  if(snake.some(s=>s.x===head.x && s.y===head.y)) { gameOver(); return }
+
+  snake.unshift(head);
+  // ate food?
+  if(food && head.x===food.x && head.y===food.y){
+    score += 10;
+    // Level up every 50 points
+    level = Math.floor(score/50) + 1;
+    // small speed increase when level up
+    speed = Math.min(18, Number(document.getElementById('speed').value) + Math.floor((level-1)/1));
+    placeFood();
+  } else {
+    snake.pop();
+  }
+  scoreEl.textContent = score; levelEl.textContent = level; speedLabel.textContent = speed;
+}
+
+function draw(){
+  // clear
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // background grid
+  ctx.fillStyle = 'rgba(0,0,0,0.05)';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+
+  // draw food
+  if(food){
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--food') || '#ff4d6d';
+    roundRect(food.x*tile+2, food.y*tile+2, tile-4, tile-4, 6, true, false);
+  }
+
+  // draw snake
+  for(let i=0;i<snake.length;i++){
+    const s = snake[i];
+    const grad = ctx.createLinearGradient(s.x*tile, s.y*tile, (s.x+1)*tile, (s.y+1)*tile);
+    grad.addColorStop(0, i===0? '#a8ffd0' : '#00ff99');
+    grad.addColorStop(1, i===0? '#55e6a1' : '#00b37a');
+    ctx.fillStyle = grad;
+    roundRect(s.x*tile+1, s.y*tile+1, tile-2, tile-2, 5, true, false);
+  }
+}
+
+function roundRect(x, y, w, h, r, fill, stroke) {
+  if (typeof r === 'number') r = {tl: r, tr: r, br: r, bl: r};
+  ctx.beginPath();
+  ctx.moveTo(x + r.tl, y);
+  ctx.lineTo(x + w - r.tr, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r.tr);
+  ctx.lineTo(x + w, y + h - r.br);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r.br, y + h);
+  ctx.lineTo(x + r.bl, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r.bl);
+  ctx.lineTo(x, y + r.tl);
+  ctx.quadraticCurveTo(x, y, x + r.tl, y);
+  ctx.closePath();
+  if (fill) ctx.fill();
+  if (stroke) ctx.stroke();
+}
+
+function gameLoop(ms){
+  if(!running) return;
+  window.requestAnimationFrame(gameLoop);
+  const now = performance.now();
+  if(now - lastPaint < 1000 / speed) return;
+  lastPaint = now;
+  update();
+  draw();
+}
+
+// input
+window.addEventListener('keydown', e=>{
+  if(e.key===' '){ // pause
+    running = !running;
+    if(running) { messageBox.innerHTML = ''; lastPaint = performance.now(); window.requestAnimationFrame(gameLoop) }
+    else messageBox.innerHTML = '<div style="color:var(--muted)">Paused — press Space to resume</div>';
+  }
+  if(e.key==='r' || e.key==='R') resetGame();
+  const k = e.key;
+  if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(k) || ['w','a','s','d','W','A','S','D'].includes(k)){
+    const map = {ArrowUp:[0,-1], ArrowDown:[0,1], ArrowLeft:[-1,0], ArrowRight:[1,0], w:[0,-1], s:[0,1], a:[-1,0], d:[1,0], W:[0,-1], S:[0,1], A:[-1,0], D:[1,0]}
+    const [x,y] = map[k];
+    // prevent reverse
+    if(snake.length>1 && snake[0].x + x === snake[1].x && snake[0].y + y === snake[1].y) return;
+    dir = {x,y};
+    if(!running){ running=true; messageBox.innerHTML=''; lastPaint = performance.now(); window.requestAnimationFrame(gameLoop) }
+  }
+});
+
+// touch swipe support
+let touchStart = null;
+canvas.addEventListener('touchstart', e=>{ const t=e.touches[0]; touchStart={x:t.clientX,y:t.clientY} })
+canvas.addEventListener('touchend', e=>{ if(!touchStart) return; const t=e.changedTouches[0]; const dx = t.clientX - touchStart.x; const dy = t.clientY - touchStart.y; if(Math.abs(dx)>Math.abs(dy)){
+  if(dx>20) dir = {x:1,y:0}; else if(dx<-20) dir={x:-1,y:0}
+ } else {
+  if(dy>20) dir={x:0,y:1}; else if(dy<-20) dir={x:0,y:-1}
+ }
+ touchStart = null; if(!running){ running=true; messageBox.innerHTML=''; lastPaint = performance.now(); window.requestAnimationFrame(gameLoop) }
+})
+
+// UI buttons
+document.getElementById('startBtn').addEventListener('click', ()=>{ if(!running){ running=true; messageBox.innerHTML=''; lastPaint = performance.now(); window.requestAnimationFrame(gameLoop) }})
+document.getElementById('pauseBtn').addEventListener('click', ()=>{ running=!running; if(!running) messageBox.innerHTML='<div style="color:var(--muted)">Paused — press Space to resume</div>'; else { messageBox.innerHTML=''; lastPaint = performance.now(); window.requestAnimationFrame(gameLoop) }})
+document.getElementById('restartBtn').addEventListener('click', ()=>{ resetGame(); messageBox.innerHTML=''; draw(); })
+
+// speed control
+const speedInput = document.getElementById('speed');
+speedInput.addEventListener('input', ()=>{ document.getElementById('speedOut').textContent = speedInput.value; document.getElementById('speedLabel').textContent = speedInput.value; if(!running) speed = Number(speedInput.value); })
+
+// copy link & share
+document.getElementById('copyLink').addEventListener('click', async ()=>{
+  try{
+    await navigator.clipboard.writeText(location.href);
+    alert('Page URL copied to clipboard! Now paste it on LinkedIn.')
+  }catch(e){ prompt('Copy this URL', location.href) }
+})
+
+document.getElementById('shareLinkedIn').addEventListener('click', ()=>{
+  const url = encodeURIComponent(location.href);
+  const share = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
+  window.open(share,'_blank');
+})
+
+// initialize
+placeFood(); draw();
+
+</script>
+</body>
+</html>
